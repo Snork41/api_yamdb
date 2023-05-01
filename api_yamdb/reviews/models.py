@@ -39,7 +39,9 @@ class Title(models.Model):
         verbose_name='Год создания'
     )
     description = models.TextField(
-        verbose_name='Описание'
+        verbose_name='Описание',
+        null=True,
+        blank=True
     )
     category = models.ForeignKey(
         'Category',

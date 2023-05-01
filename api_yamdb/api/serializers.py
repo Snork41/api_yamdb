@@ -1,5 +1,4 @@
 import datetime as dt
-import re
 
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
@@ -33,15 +32,7 @@ class TitleGetSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Title
-        fields = (
-            'id',
-            'name',
-            'year',
-            'rating',
-            'description',
-            'genre',
-            'category'
-        )
+        fields = '__all__'
 
 
 class TitleWriteSerializer(serializers.ModelSerializer):
@@ -57,15 +48,7 @@ class TitleWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Title
-        fields = (
-            'id',
-            'name',
-            'year',
-            'rating',
-            'description',
-            'genre',
-            'category'
-        )
+        fields = '__all__'
 
     def validate_year(self, value):
         year = dt.date.today().year
@@ -98,7 +81,7 @@ class ReviewSerializer(serializers.ModelSerializer):
         return data
 
     class Meta:
-        fields = ('id', 'text', 'author', 'score', 'pub_date', 'title')
+        fields = '__all__'
         model = Review
 
 
@@ -112,37 +95,13 @@ class CommentSerializer(serializers.ModelSerializer):
     )
 
     class Meta:
-        fields = ('id', 'author', 'text', 'pub_date', 'review')
+        fields = '__all__'
         model = Comment
 
 
-class AuthSignupSerializer(serializers.Serializer):
-    username = serializers.CharField(max_length=150)
-    email = serializers.EmailField(required=True, max_length=254)
-
-    def validate_username(self, username):
-        if (username.lower() == 'me'
-                or re.match(r'^[\w.@+-]', username) is None):
-            raise serializers.ValidationError('Нельзя создать пользователя с'
-                                              'таким username!')
-        return username
-
-    def validate(self, data):
-        if (not User.objects.filter(username=data['username']).exists()
-                and User.objects.filter(email=data['email']).exists()):
-            raise serializers.ValidationError('Пользователь с таким email уже'
-                                              'существует!')
-        return data
-
-
-class AuthTokenSerializer(serializers.Serializer):
-    username = serializers.SlugField(max_length=150)
-    confirmation_code = serializers.CharField()
-
-
-class MeSerializer(serializers.ModelSerializer):
+class AuthSignupSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(
-        required=False,
+        required=True,
         max_length=254,
         validators=[UniqueValidator(queryset=User.objects.all(),
                                     message='Пользователь с таким email уже'
@@ -152,9 +111,30 @@ class MeSerializer(serializers.ModelSerializer):
         max_length=150,
         validators=[UniqueValidator(queryset=User.objects.all(),
                                     message='Пользователь с таким username уже'
-                                            'существует')],
-        required=False
+                                            'существует')]
     )
+
+    class Meta:
+        fields = ('email', 'username')
+        model = User
+
+    def validate_username(self, value):
+        if value == 'me':
+            raise serializers.ValidationError('Нельзя создать пользователя с'
+                                              'таким username!')
+        return value
+
+
+class AuthTokenSerializer(serializers.ModelSerializer):
+    username = serializers.SlugField(max_length=150)
+    confirmation_code = serializers.CharField()
+
+    class Meta:
+        fields = ('username', 'confirmation_code')
+        model = User
+
+
+class MeSerializer(AuthSignupSerializer):
     first_name = serializers.CharField(max_length=150, required=False)
     last_name = serializers.CharField(max_length=150, required=False)
 
@@ -168,29 +148,8 @@ class MeSerializer(serializers.ModelSerializer):
                   'role')
         read_only_fields = ('role',)
 
-    def validate_username(self, username):
-        if (username.lower() == 'me'
-                or re.match(r'^[\w.@+-]', username) is None):
-            raise serializers.ValidationError('Нельзя создать пользователя с'
-                                              'таким username!')
-        return username
-
 
 class UsersSerializer(MeSerializer):
-    email = serializers.EmailField(
-        required=True,
-        max_length=254,
-        validators=[UniqueValidator(queryset=User.objects.all(),
-                                    message='Пользователь с таким email уже'
-                                            'существует')]
-    )
-    username = serializers.SlugField(
-        max_length=150,
-        validators=[UniqueValidator(queryset=User.objects.all(),
-                                    message='Пользователь с таким username уже'
-                                            'существует')],
-        required=True
-    )
 
     class Meta:
         model = User
